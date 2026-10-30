@@ -1,0 +1,51 @@
+name: 晚点名自动签到
+
+on:
+  schedule:
+    # 北京时间 21:00 / 21:20 / 21:40 / 22:00 / 22:15（UTC = 减 8 小时）
+    # GitHub 的定时会有几分钟到十几分钟延迟，所以留多次机会；
+    # 脚本发现"今天已签到"会直接跳过，不会重复提交。
+    - cron: "0 13 * * *"
+    - cron: "20 13 * * *"
+    - cron: "40 13 * * *"
+    - cron: "0 14 * * *"
+    - cron: "15 14 * * *"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "忽略时间窗口，立即执行一次"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# 同一个时间只允许一个实例，避免多次触发并发登录
+concurrency:
+  group: checkin
+  cancel-in-progress: false
+
+jobs:
+  checkin:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: 安装依赖
+        run: pip install -r requirements.txt
+
+      - name: 执行签到
+        env:
+          CONFIG_YAML: ${{ secrets.CONFIG_YAML }}
+          FZU_USERNAME: ${{ secrets.FZU_USERNAME }}
+          FZU_PASSWORD: ${{ secrets.FZU_PASSWORD }}
+          FZU_LON: ${{ secrets.FZU_LON }}
+          FZU_LAT: ${{ secrets.FZU_LAT }}
+          FZU_FORCE: ${{ inputs.force }}
+        run: python cloud_run.py

@@ -1,0 +1,25 @@
+name: keepalive
+
+# GitHub 会停用"60 天没有任何提交"的仓库里的定时任务。
+# 这个工作流每月提交一次时间戳，保证签到任务不会被自动停用。
+on:
+  schedule:
+    - cron: "0 3 1 * *"   # 每月 1 日 11:00（北京时间）
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 写入时间戳并提交
+        run: |
+          date -u +"%Y-%m-%dT%H:%M:%SZ" > .keepalive
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .keepalive
+          git commit -m "keepalive $(date -u +%F)" || echo "nothing to commit"
+          git push
